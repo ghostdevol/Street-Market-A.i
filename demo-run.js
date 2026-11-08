@@ -60,6 +60,35 @@ function callReturn(outcome) {
   return JSON.parse(Buffer.from(sv, "base64").toString());
 }
 
+// Status-checked change call. Args go as a RAW JSON BUFFER so u128
+// string values reach the wire byte-exact — in the first run, a price
+// the script held as a string still arrived on-chain as a raw JSON
+// number through the object-args path, and the bulletin trapped on it.
+// The outcome's status is checked here: anything that is not Success
+// throws with the on-chain failure detail, so a trapped call aborts
+// the run through the DEMO FAILED path instead of passing silently
+// (the deploy.js failure mode).
+async function callChecked(account, contractId, methodName, argsObj, gas, attachedDeposit) {
+  const outcome = await account.functionCall({
+    contractId,
+    methodName,
+    args: Buffer.from(JSON.stringify(argsObj)),
+    gas,
+    attachedDeposit,
+  });
+  const status = outcome && outcome.status;
+  if (!status || !("SuccessValue" in status)) {
+    const detail =
+      status && status.Failure
+        ? JSON.stringify(status.Failure)
+        : JSON.stringify(status);
+    throw new Error(
+      `CALL FAILED ${methodName} on ${contractId} (signed by ${account.accountId}): ${detail}`
+    );
+  }
+  return outcome;
+}
+
 async function main() {
   const priv = process.env.MASTER_PRIVATE_KEY;
   if (!priv) {
@@ -113,20 +142,8 @@ async function main() {
   const lastSync = { NEAR: 0, USDC: 0 };
   async function syncPrice(asset, price, force) {
     if (!force && Date.now() - lastSync[asset] < 30000) return;
-    await master.functionCall({
-      contractId: BULLETIN,
-      methodName: "post_price",
-      args: { asset, price },
-      gas: GAS_MASTER,
-      attachedDeposit: "0",
-    });
-    await master.functionCall({
-      contractId: BOARD,
-      methodName: "sync_price",
-      args: { currency: asset, price },
-      gas: GAS_MASTER,
-      attachedDeposit: "0",
-    });
+    await callChecked(master, BULLETIN, "post_price", { asset, price }, GAS_MASTER, "0");
+    await callChecked(master, BOARD, "sync_price", { currency: asset, price }, GAS_MASTER, "0");
     lastSync[asset] = Date.now();
     log(`PRICE ${asset} = ${price} micro-USD posted to bulletin and synced to board`);
   }
@@ -158,13 +175,11 @@ async function main() {
   // Step 3 — JOB A: the USDC bid war, driven by each shop's quote_bid
   // -------------------------------------------------------------------
   const JOB_A_BUDGET = "900";
-  const outA = await master.functionCall({
-    contractId: BOARD,
-    methodName: "post_job",
-    args: { task: "coffee-run", item: "coffee", currency: "USDC", budget: JOB_A_BUDGET, duration_seconds: 3600 },
-    gas: GAS_MASTER,
-    attachedDeposit: "0",
-  });
+  const outA = await callChecked(
+    master, BOARD, "post_job",
+    { task: "coffee-run", item: "coffee", currency: "USDC", budget: JOB_A_BUDGET, duration_seconds: 3600 },
+    GAS_MASTER, "0"
+  );
   const jobA = callReturn(outA);
   log(`JOB_POSTED A id=${jobA} task=coffee-run item=coffee currency=USDC budget=${JOB_A_BUDGET} (no NEAR attached — a USDC job is an obligation, not escrow)`);
   await printJob(jobA, "STATE");
@@ -206,13 +221,11 @@ async function main() {
         log(`PASS ${s.name} (${id}) — quote ${quote} cannot beat best ${best} (floor reached)`);
         continue;
       }
-      await shopAcc[id].functionCall({
-        contractId: BOARD,
-        methodName: "bid",
-        args: { job_id: jobA, amount: quote.toString() },
-        gas: GAS_SHOP,
-        attachedDeposit: "0",
-      });
+      await callChecked(
+        shopAcc[id], BOARD, "bid",
+        { job_id: jobA, amount: quote.toString() },
+        GAS_SHOP, "0"
+      );
       log(`BID ${s.name} (${id}) ${quote} USDC on job ${jobA}`);
       bidsThisRound += 1;
     }
@@ -230,13 +243,7 @@ async function main() {
   // Step 4 — award Job A
   // -------------------------------------------------------------------
   await syncPrice("USDC", PRICE_USDC, true); // freshness is re-checked at award
-  await master.functionCall({
-    contractId: BOARD,
-    methodName: "close_auction",
-    args: { job_id: jobA },
-    gas: GAS_MASTER,
-    attachedDeposit: "0",
-  });
+  await callChecked(master, BOARD, "close_auction", { job_id: jobA }, GAS_MASTER, "0");
   log(`AWARD A: close_auction called by poster (expected: status=Awarded, settlement=Pending)`);
   await printJob(jobA, "STATE");
 
@@ -247,13 +254,7 @@ async function main() {
   // moved — proven below by job_escrow (the recorded debt) versus
   // paid_out_to (actual released payments: still zero).
   // -------------------------------------------------------------------
-  await master.functionCall({
-    contractId: BOARD,
-    methodName: "confirm_completion",
-    args: { job_id: jobA },
-    gas: GAS_MASTER,
-    attachedDeposit: "0",
-  });
+  await callChecked(master, BOARD, "confirm_completion", { job_id: jobA }, GAS_MASTER, "0");
   log(`CONFIRM A: poster confirmed completion (expected: status=AwaitingSettlement, settlement=Pending)`);
   const stateA = await printJob(jobA, "STATE");
   const escrowA = await master.viewFunction({
@@ -274,13 +275,11 @@ async function main() {
   // -------------------------------------------------------------------
   // Step 6 — settlement layer reports the USDC actually moved
   // -------------------------------------------------------------------
-  await master.functionCall({
-    contractId: BOARD,
-    methodName: "report_settlement_fulfilled",
-    args: { job_id: jobA, reference: "streetmarket-demo-usdc-001" },
-    gas: GAS_MASTER,
-    attachedDeposit: "0",
-  });
+  await callChecked(
+    master, BOARD, "report_settlement_fulfilled",
+    { job_id: jobA, reference: "streetmarket-demo-usdc-001" },
+    GAS_MASTER, "0"
+  );
   log(`SETTLE A: report_settlement_fulfilled ref=streetmarket-demo-usdc-001 (expected: status=Settled, settlement=Fulfilled)`);
   await printJob(jobA, "STATE");
   const paidA2 = await master.viewFunction({
@@ -305,13 +304,11 @@ async function main() {
   log(`JOB B setup: roaster balance before = ${fmt(roasterBefore)} NEAR · master balance before = ${fmt(masterBefore)} NEAR`);
 
   const JOB_B_BUDGET = "500000000000000000000000"; // 0.5 NEAR in yocto
-  const outB = await master.functionCall({
-    contractId: BOARD,
-    methodName: "post_job",
-    args: { task: "coffee-run", item: "coffee", currency: "NEAR", budget: JOB_B_BUDGET, duration_seconds: 3600 },
-    gas: GAS_MASTER,
-    attachedDeposit: JOB_B_BUDGET, // NEAR jobs lock the full budget as escrow
-  });
+  const outB = await callChecked(
+    master, BOARD, "post_job",
+    { task: "coffee-run", item: "coffee", currency: "NEAR", budget: JOB_B_BUDGET, duration_seconds: 3600 },
+    GAS_MASTER, JOB_B_BUDGET // NEAR jobs lock the full budget as escrow
+  );
   const jobB = callReturn(outB);
   log(`JOB_POSTED B id=${jobB} task=coffee-run item=coffee currency=NEAR budget=${JOB_B_BUDGET} yocto (0.5 NEAR locked in escrow at posting)`);
   await printJob(jobB, "STATE");
@@ -327,36 +324,22 @@ async function main() {
   for (const b of scriptedBids) {
     const id = `${b.sub}.${MASTER}`;
     await syncPrice("NEAR", PRICE_NEAR, false); // freshness guard, >30 s only
-    await shopAcc[id].functionCall({
-      contractId: BOARD,
-      methodName: "bid",
-      args: { job_id: jobB, amount: b.amount },
-      gas: GAS_SHOP,
-      attachedDeposit: "0",
-    });
+    await callChecked(
+      shopAcc[id], BOARD, "bid",
+      { job_id: jobB, amount: b.amount },
+      GAS_SHOP, "0"
+    );
     log(`BID ${b.name} (${id}) ${b.amount} yocto (${fmt(b.amount)} NEAR) on job ${jobB}`);
   }
   const finalB = await printJob(jobB, "AUCTION FINAL");
   log(`WINNER B: ${finalB[4]} at ${finalB[3]} yocto (${fmt(finalB[3])} NEAR)`);
 
   await syncPrice("NEAR", PRICE_NEAR, true); // freshness is re-checked at award
-  await master.functionCall({
-    contractId: BOARD,
-    methodName: "close_auction",
-    args: { job_id: jobB },
-    gas: GAS_MASTER,
-    attachedDeposit: "0",
-  });
+  await callChecked(master, BOARD, "close_auction", { job_id: jobB }, GAS_MASTER, "0");
   log(`AWARD B: close_auction called by poster (expected: status=Awarded)`);
   await printJob(jobB, "STATE");
 
-  await master.functionCall({
-    contractId: BOARD,
-    methodName: "confirm_completion",
-    args: { job_id: jobB },
-    gas: GAS_MASTER,
-    attachedDeposit: "0",
-  });
+  await callChecked(master, BOARD, "confirm_completion", { job_id: jobB }, GAS_MASTER, "0");
   log(`CONFIRM B: poster confirmed completion — escrow releases to the winner (expected: status=Settled)`);
   await printJob(jobB, "STATE");
 
