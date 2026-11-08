@@ -13,9 +13,23 @@ Three NEAR smart contracts and a keeper:
 - **Storefront Agent** (`contracts/storefront-agent`) — one contract per shop, same code every time. Holds the owner's jobsheet and quotes bids with checked arithmetic: `floor = cost + cost × margin`, undercut the best rival by one step, clamp *at* the floor, walk away rather than lose money. Simple rule: *kill, don't be killed.*
 - **Price Bulletin** (`contracts/price-bulletin`) — the street's shared chalkboard. An authorized keeper posts live micro-USD prices (NEAR, BTC, ETH, USDC, USDT, wNEAR, ZEC); reads are freshness-gated — a stale price is flagged and refused, never silently traded on. One board, one truth, for every shop.
 - **Street Board** (`contracts/street-board`) — the marketplace, in five modules: Job Registry, Auction Engine, Bid Validation (registered storefronts, task + currency authorization, price freshness), Award Engine (winner re-validated at close), and Settlement.
-- **Keeper** (`keeper/`) — the chalk-holder: fetches real prices on an interval (provider chain with fallbacks, adapted from the author's own pre-existing pricing code) and posts them to the bulletin and the board.
+- **Keeper** (`keeper/`) — the chalk-holder: fetches real prices on an interval (provider chain with fallbacks, adapted from the author's own pre-existing pricing code) and posts them to the bulletin and the board. The script is written; its first live run against the deployed contracts is the next step.
 
 The browser page is the *face*: it renders storefronts from a registry configuration — nothing hard-coded — so the same page fronts 3 shops or 3,000.
+
+## Deployed on NEAR testnet — live now
+
+Deployed Nov 8, 2026 from `ghosttech.testnet` and verified by reading the chain back:
+
+| Contract | Account | State |
+|---|---|---|
+| Price Bulletin | [`bulletin.ghosttech.testnet`](https://testnet.nearblocks.io/address/bulletin.ghosttech.testnet) | Live — freshness window 60 s |
+| Street Board | [`board.ghosttech.testnet`](https://testnet.nearblocks.io/address/board.ghosttech.testnet) | Live |
+| Storefront — corner-cafe | [`cafe2.ghosttech.testnet`](https://testnet.nearblocks.io/address/cafe2.ghosttech.testnet) | Live — registered on the Board (`is_registered` = true) |
+| Storefront — roaster-supply | [`roaster.ghosttech.testnet`](https://testnet.nearblocks.io/address/roaster.ghosttech.testnet) | Live — registered on the Board (`is_registered` = true) |
+| Storefront — night-owl | [`owl.ghosttech.testnet`](https://testnet.nearblocks.io/address/owl.ghosttech.testnet) | Live — registered on the Board (`is_registered` = true) |
+
+*Stated plainly: the first cafe account, `cafe.ghosttech.testnet`, is deployed but **not** registered — its signing key was generated in-memory by the first deploy run and lost when that run ended, so it can never sign again. The registered corner-cafe seat is `cafe2.ghosttech.testnet`, whose key is saved with the deploy tooling.*
 
 ## Settlement, stated honestly
 
@@ -39,6 +53,7 @@ The browser page is the *face*: it renders storefronts from a registry configura
 3. **Fast-forward the price feed past 60 s →** the board declares the feed stale and Bid Validation refuses the next bid. Re-sync and bidding resumes.
 4. **Award a NEAR job and confirm completion →** escrow releases to the winner. Award a USDC job instead → it sits at *AwaitingSettlement*, paid-out still zero, until a fulfillment report with a reference arrives.
 5. **Push the street-size selector →** the registry generates storefronts by the thousand from the same configuration.
+6. **Check the chain itself →** open `board.ghosttech.testnet` on [testnet.nearblocks.io](https://testnet.nearblocks.io/address/board.ghosttech.testnet) and call `is_registered` for `cafe2.ghosttech.testnet`, `roaster.ghosttech.testnet`, and `owl.ghosttech.testnet` — all three answer **true**. Call `get_max_age_seconds` on `bulletin.ghosttech.testnet` — it answers **60**.
 
 ## Tracks
 
@@ -50,9 +65,9 @@ One agent contract, stamped out per storefront; one board + bulletin pair per st
 
 ## Roadmap, plainly
 
-- Contracts: built and test-proven (this repo). Testnet deployment follows account setup.
+- Contracts: built, test-proven (this repo), and **deployed on NEAR testnet** (Nov 8, 2026 — addresses above, all five verified on-chain). Remaining on this leg: the keeper's first live run, posting real prices to the deployed Bulletin on an interval.
 - Cross-asset obligations settle through NEAR Intents — the fulfillment-report door in the Board is built for exactly that report.
-- The page's in-browser bulletin is a simulation for the demo; on testnet it reads the deployed Bulletin contract.
+- The page's in-browser bulletin remains a labeled simulation for the demo; the Bulletin contract it mirrors is the one live at `bulletin.ghosttech.testnet`. Wiring the page to read the chain is a later step — the keeper has not posted yet, so there is no live price history to read.
 
 ## License
 
