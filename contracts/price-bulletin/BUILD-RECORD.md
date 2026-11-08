@@ -23,3 +23,9 @@ math as an API-independent source.
 
 **Next:** the keeper script itself (posting on
 an interval) lands with the testnet deployment step.
+
+**Correction (2026-11-08):** the keeper as shipped (`keeper/keeper.js`)
+implements CoinGecko pricing plus the USDC/USDT $1.00 pegs only. The
+DexScreener fallback and Uniswap V2/V3 pool math named above were source
+material consulted during design; they are NOT implemented in the shipped
+keeper. The README's keeper description matches the code.
