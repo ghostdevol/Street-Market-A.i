@@ -289,11 +289,27 @@
         background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
         padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow);
       }
-      .player-bar .now { font-size: 0.92rem; font-weight: 600; flex: 1; min-width: 220px; }
-      .player-bar .now .tc { font-family: "IBM Plex Mono", monospace; color: var(--amber-strong); margin-right: 8px; }
-      .progress { height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; flex-basis: 100%; }
-      .progress i { display: block; height: 100%; background: var(--amber); width: 0%; transition: width 0.5s linear; }
-      .frames { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .segments { display: flex; gap: 6px; flex: 1; min-width: 150px; }
+      .segments i { flex: 1; height: 8px; border-radius: 99px; background: var(--surface-2); transition: background 0.3s; }
+      .segments i.filled { background: var(--amber); }
+      .stage { margin-bottom: 16px; }
+      .stage-body { padding: 24px; min-height: 264px; font-size: 1rem; }
+      .stage-body .mini-title { font-size: 1.3rem; margin-bottom: 12px; }
+      .stage-body .mini-row { font-size: 0.98rem; padding: 7px 0; }
+      .stage-body .mini-chip { font-size: 0.85rem; padding: 4px 12px; margin-top: 14px; }
+      .stage-body .mini-btn { font-size: 0.95rem; padding: 8px 16px; margin-top: 14px; }
+      .stage-caption { padding: 16px 4px 0; }
+      .stage-caption .tc { font-family: "IBM Plex Mono", monospace; color: var(--amber-strong); font-size: 0.95rem; font-weight: 600; }
+      .stage-caption h3 { margin: 4px 0 6px; font-size: clamp(1.4rem, 3vw, 1.9rem); letter-spacing: -0.01em; line-height: 1.15; }
+      .stage-caption p { margin: 0; color: var(--muted); font-size: 1.05rem; max-width: 46rem; }
+      @keyframes stage-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+      .stage.swap .stage-inner { animation: stage-in 0.45s ease; }
+      .frames { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+      .frame .shot-body { min-height: 0; padding: 10px; font-size: 0.7rem; }
+      .frame .shot-body .mini-title { font-size: 0.78rem; margin-bottom: 5px; }
+      .frame .mini-row { font-size: 0.66rem; padding: 3px 0; }
+      .frame .mini-chip { font-size: 0.62rem; margin-top: 5px; }
+      .frame .mini-btn { font-size: 0.66rem; padding: 3px 8px; margin-top: 6px; }
       .frame { text-align: left; background: none; border: none; padding: 0; color: inherit; }
       .shot {
         background: var(--surface); border: 2px solid var(--line); border-radius: 14px; overflow: hidden;
@@ -339,7 +355,8 @@
       @media (max-width: 880px) {
         .hero { grid-template-columns: 1fr; padding-top: 30px; }
         .chalk-tools { grid-template-columns: 1fr; }
-        .frames { grid-template-columns: 1fr; }
+        .frames { grid-template-columns: 1fr 1fr; }
+        .stage-body { min-height: 224px; padding: 18px; }
         .pitch-grid { grid-template-columns: 1fr; }
         .asset-row { grid-template-columns: 70px 1fr auto; }
         .asset-meta { display: none; }
@@ -508,10 +525,23 @@
         <div class="sec-head"><span class="sec-num">05</span><h2>The Demo, Frame by Frame</h2></div>
         <p class="sec-sub">The walkthrough video, as screenshots: one job travels the whole street — posted, bid on, awarded, settled — in about a minute. Press play and the frames advance like the video does; tap any frame to jump to it.</p>
 
+        <div class="stage" id="stage">
+          <div class="stage-inner">
+            <div class="shot">
+              <div class="shot-bar"><i></i><i></i><i></i><span class="url">ghosttech.testnet/board</span></div>
+              <div class="shot-body stage-body" id="stage-body"></div>
+            </div>
+            <div class="stage-caption" aria-live="polite">
+              <span class="tc" id="stage-tc">0:00</span>
+              <h3 id="stage-title">The job posts</h3>
+              <p id="stage-caption">Poster writes a job on the Board — task, item, currency, budget, deadline. A NEAR budget locks in escrow the moment it posts.</p>
+            </div>
+          </div>
+        </div>
+
         <div class="player-bar">
           <button class="btn primary small" id="player-toggle" type="button">▶ Play demo</button>
-          <div class="now" aria-live="polite"><span class="tc" id="player-tc">0:00</span><span id="player-caption">Poster writes a job on the Board — task, item, currency, budget, deadline.</span></div>
-          <div class="progress" aria-hidden="true"><i id="player-progress"></i></div>
+          <div class="segments" id="player-segments" role="img" aria-label="Demo progress: frame 1 of 4"><i class="filled"></i><i></i><i></i><i></i></div>
         </div>
 
         <div class="frames" id="frames"></div>
@@ -1072,7 +1102,7 @@
       '<div class="mini-row"><span>Cross-currency jobs</span><span>AwaitingSettlement → Fulfilled</span></div>' +
       '<span class="mini-chip">Settled only when the asset verifiably moves</span>'
     ];
-    let playerIdx = 0, playerTimer = null, playerPlaying = false;
+    let playerIdx = 0, playerTimer = null, playerPlaying = false, playerEnded = false;
 
     function renderFrames() {
       $('#frames').innerHTML = CONFIG.demoFrames.map((f, i) =>
@@ -1091,27 +1121,41 @@
     function setFrame(i) {
       playerIdx = i;
       const f = CONFIG.demoFrames[i];
-      $('#player-tc').textContent = f.tc;
-      $('#player-caption').textContent = f.caption;
-      $('#player-progress').style.width = ((i + 1) / CONFIG.demoFrames.length * 100) + '%';
+      /* the stage is the show: swap the actual shot, title and caption */
+      $('#stage-body').innerHTML = SHOT_BODIES[i];
+      $('#stage-tc').textContent = f.tc;
+      $('#stage-title').textContent = f.title;
+      $('#stage-caption').textContent = f.caption;
+      const stage = $('#stage');
+      stage.classList.remove('swap');
+      void stage.offsetWidth; /* restart the swap animation */
+      stage.classList.add('swap');
+      const segs = $$('#player-segments i');
+      segs.forEach((seg, j) => seg.classList.toggle('filled', j <= i));
+      $('#player-segments').setAttribute('aria-label', 'Demo progress: frame ' + (i + 1) + ' of ' + CONFIG.demoFrames.length);
       $$('#frames .frame').forEach((el, j) => el.classList.toggle('active', j === i));
     }
+    function stopPlayer(label) {
+      if (playerTimer) { clearInterval(playerTimer); playerTimer = null; }
+      playerPlaying = false;
+      $('#player-toggle').textContent = label;
+    }
     function wirePlayer() {
-      $('#player-toggle').addEventListener('click', e => {
-        playerPlaying = !playerPlaying;
-        e.target.textContent = playerPlaying ? '⏸ Pause demo' : '▶ Play demo';
-        if (playerPlaying) {
-          playerTimer = setInterval(() => {
-            const next = playerIdx + 1;
-            if (next >= CONFIG.demoFrames.length) {
-              clearInterval(playerTimer); playerTimer = null; playerPlaying = false;
-              e.target.textContent = '↻ Replay demo';
-              setFrame(CONFIG.demoFrames.length - 1);
-              return;
-            }
-            setFrame(next);
-          }, 3800);
-        } else if (playerTimer) { clearInterval(playerTimer); playerTimer = null; }
+      const btn = $('#player-toggle');
+      btn.addEventListener('click', () => {
+        if (playerPlaying) { stopPlayer('▶ Play demo'); return; }
+        if (playerEnded || playerIdx >= CONFIG.demoFrames.length - 1) { setFrame(0); playerEnded = false; }
+        playerPlaying = true;
+        btn.textContent = '⏸ Pause demo';
+        playerTimer = setInterval(() => {
+          const next = playerIdx + 1;
+          if (next >= CONFIG.demoFrames.length) {
+            playerEnded = true;
+            stopPlayer('↻ Replay demo');
+            return;
+          }
+          setFrame(next);
+        }, 3800);
       });
     }
 
