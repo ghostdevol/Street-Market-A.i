@@ -1,0 +1,77 @@
+==============================================================
+StreetMarket AI by GhostTech — REAL NEAR testnet demo run
+Started 2026-11-09T04:42:31.860Z
+Poster/keeper: ghosttech.testnet
+Bulletin: bulletin.ghosttech.testnet · Board: board.ghosttech.testnet
+==============================================================
+Master ghosttech.testnet balance: 5.8655635418520932994 NEAR
+Shop corner-cafe (cafe2.ghosttech.testnet) balance: 2.3984493732412308 NEAR
+Shop roaster-supply (roaster.ghosttech.testnet) balance: 2.3984477641039931 NEAR
+Shop night-owl (owl.ghosttech.testnet) balance: 2.3984462638613472 NEAR
+PRICE NEAR = 3700000 micro-USD posted to bulletin and synced to board
+PRICE USDC = 1000000 micro-USD posted to bulletin and synced to board
+JOB_POSTED A id=3 task=coffee-run item=coffee currency=USDC budget=900 (no NEAR attached — a USDC job is an obligation, not escrow)
+STATE job=3 status=Open currency=USDC budget=900 best_bid=none best_bidder=none settlement=None
+BID corner-cafe (cafe2.ghosttech.testnet) 900 USDC on job 3
+BID roaster-supply (roaster.ghosttech.testnet) 885 USDC on job 3
+BID night-owl (owl.ghosttech.testnet) 880 USDC on job 3
+BID corner-cafe (cafe2.ghosttech.testnet) 870 USDC on job 3
+BID roaster-supply (roaster.ghosttech.testnet) 855 USDC on job 3
+PASS night-owl (owl.ghosttech.testnet) — no quote: the best bid is at or below its floor
+BID corner-cafe (cafe2.ghosttech.testnet) 845 USDC on job 3
+BID roaster-supply (roaster.ghosttech.testnet) 830 USDC on job 3
+PASS night-owl (owl.ghosttech.testnet) — no quote: the best bid is at or below its floor
+BID corner-cafe (cafe2.ghosttech.testnet) 820 USDC on job 3
+PRICE USDC = 1000000 micro-USD posted to bulletin and synced to board
+BID roaster-supply (roaster.ghosttech.testnet) 805 USDC on job 3
+PASS night-owl (owl.ghosttech.testnet) — no quote: the best bid is at or below its floor
+PASS corner-cafe (cafe2.ghosttech.testnet) — no quote: the best bid is at or below its floor
+HOLD roaster-supply (roaster.ghosttech.testnet) — currently winning at 805 USDC, never bids against itself
+PASS night-owl (owl.ghosttech.testnet) — no quote: the best bid is at or below its floor
+Auction over after round 5: a full round with no new bid.
+AUCTION FINAL job=3 status=Open currency=USDC budget=900 best_bid=805 best_bidder=roaster.ghosttech.testnet settlement=None
+WINNER A: roaster.ghosttech.testnet at 805 USDC
+PRICE USDC = 1000000 micro-USD posted to bulletin and synced to board
+AWARD A: close_auction called by poster (expected: status=Awarded, settlement=Pending)
+STATE job=3 status=Awarded currency=USDC budget=900 best_bid=805 best_bidder=roaster.ghosttech.testnet settlement=Pending
+CONFIRM A: poster confirmed completion (expected: status=AwaitingSettlement, settlement=Pending)
+STATE job=3 status=AwaitingSettlement currency=USDC budget=900 best_bid=805 best_bidder=roaster.ghosttech.testnet settlement=Pending
+OBLIGATION, NOT FUNDS: job 3 records 805 USDC owed to roaster.ghosttech.testnet (settlement=Pending), while paid_out_to(roaster.ghosttech.testnet) = 0 — nothing has actually been paid yet.
+SETTLE A: report_settlement_fulfilled ref=streetmarket-demo-usdc-001 (expected: status=Settled, settlement=Fulfilled)
+STATE job=3 status=Settled currency=USDC budget=900 best_bid=805 best_bidder=roaster.ghosttech.testnet settlement=Fulfilled
+PROOF A: paid_out_to(roaster.ghosttech.testnet) = 805 USDC, settlement_ref = streetmarket-demo-usdc-001
+JOB B setup: roaster balance before = 2.3977064965635139 NEAR · master balance before = 5.8634450370997681994 NEAR
+JOB_POSTED B id=4 task=coffee-run item=coffee currency=NEAR budget=500000000000000000000000 yocto (0.5 NEAR locked in escrow at posting)
+STATE job=4 status=Open currency=NEAR budget=5e+23 best_bid=none best_bidder=none settlement=None
+PRICE NEAR = 3700000 micro-USD posted to bulletin and synced to board
+BID corner-cafe (cafe2.ghosttech.testnet) 490000000000000000000000 yocto (0.49 NEAR) on job 4
+BID night-owl (owl.ghosttech.testnet) 480000000000000000000000 yocto (0.48 NEAR) on job 4
+BID roaster-supply (roaster.ghosttech.testnet) 470000000000000000000000 yocto (0.47 NEAR) on job 4
+BID corner-cafe (cafe2.ghosttech.testnet) 465000000000000000000000 yocto (0.465 NEAR) on job 4
+BID roaster-supply (roaster.ghosttech.testnet) 455000000000000000000000 yocto (0.455 NEAR) on job 4
+AUCTION FINAL job=4 status=Open currency=NEAR budget=5e+23 best_bid=4.55e+23 best_bidder=roaster.ghosttech.testnet settlement=None
+DEMO FAILED: Invalid character
+Transcript above holds everything that completed before the failure.
+
+==============================================================
+FINISH JOB B — completion pass for the 22:44 demo run (job 4)
+Started 2026-11-09T04:47:29.341Z
+==============================================================
+STATE job=4 status=Open currency=NEAR budget=5e+23 best_bid=4.55e+23 best_bidder=roaster.ghosttech.testnet settlement=None
+Balances before finish: roaster = 2.3973253398443073 NEAR · master = 5.3629075042491387994 NEAR
+    Log [bulletin.ghosttech.testnet]: PRICE asset=NEAR price=3700000 at=1794199651549716644
+    OK post_price on bulletin.ghosttech.testnet
+    OK sync_price on board.ghosttech.testnet
+PRICE NEAR = 3700000 micro-USD re-posted and synced (award re-checks freshness)
+    Log [board.ghosttech.testnet]: AWARD job=4 winner=roaster.ghosttech.testnet amount=455000000000000000000000
+    OK close_auction on board.ghosttech.testnet
+AWARD B: close_auction called by poster (expected: status=Awarded)
+STATE job=4 status=Awarded currency=NEAR budget=5e+23 best_bid=4.55e+23 best_bidder=roaster.ghosttech.testnet settlement=None
+    Log [board.ghosttech.testnet]: SETTLED job=4 winner=roaster.ghosttech.testnet amount=455000000000000000000000
+    OK confirm_completion on board.ghosttech.testnet
+CONFIRM B: poster confirmed completion — escrow releases to the winner (expected: status=Settled)
+STATE job=4 status=Settled currency=NEAR budget=5e+23 best_bid=4.55e+23 best_bidder=roaster.ghosttech.testnet settlement=None
+Balances after finish: roaster = 2.8523253398443073 NEAR · master = 5.3621315669568191994 NEAR
+SETTLEMENT PROOF B: roaster delta = +0.455 NEAR — exactly the 0.455 NEAR winning bid, released from escrow (the master signed both calls, so the winner spent no gas here).
+Master delta = -0.0007759372923196 NEAR (gas for the finish calls only — its 0.5 NEAR escrow was already locked at posting).
+FINISH DONE: job B (id 4) settled via real escrow release. The demo is complete: job A (USDC obligation) + job B (NEAR escrow) both settled on-chain.

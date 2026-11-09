@@ -217,7 +217,7 @@ Start it:
 node keeper.js
 ```
 
-What it does, exactly as written: fetches USD prices from CoinGecko's simple/price endpoint for NEAR, BTC, ETH, and ZEC (wNEAR reuses NEAR's price), rounds each to micro-USD (1_000_000 = $1.00), sets USDC and USDT to the 1_000_000 peg, then calls `post_price` on the bulletin and `sync_price` on the board for every asset, and repeats on the interval. Until this runs, no live prices have been posted to the deployed bulletin — that is the current, stated state.
+What it does, exactly as written: fetches USD prices from CoinGecko's simple/price endpoint for NEAR, BTC, ETH, and ZEC (wNEAR reuses NEAR's price), rounds each to micro-USD (1_000_000 = $1.00), sets USDC and USDT to the 1_000_000 peg, then calls `post_price` on the bulletin and `sync_price` on the board for every asset, and repeats on the interval. The keeper itself has not run yet. Prices WERE posted to the deployed bulletin during the Nov 8 demo (NEAR at 3700000 and USDC at 1000000 micro-USD, by the demo scripts); with the bulletin's 60-second freshness window they read as stale between posts until a keeper keeps them current — the freshness rule working as designed.
 
 ### 6. Run the on-chain demo
 
@@ -233,12 +233,17 @@ What it does, against the live testnet contracts:
 2. **NEAR job** — posts the same job in NEAR with the full budget attached, so real testnet NEAR locks in the board's escrow at posting. The shops bid the same way; on award and completion confirmation, the escrow **releases to the winner** — settled means paid.
 3. Every step — job IDs, each bid, the award, the settlement states, escrow before/after — is written to **`demo-transcript.txt`** in the repo root, with the resulting on-chain state read back from the board.
 
+**Result of the Nov 8, 2026 run** (committed as `demo-transcript.txt` in this repo, and independently re-read from the chain after the run):
+
+- **Job 3 (USDC):** the three shops bid it down from 900 to **805** through their own `quote_bid` calls; roaster-supply won. Award left it at AwaitingSettlement with paid-out still 0; the settlement-fulfilled report (`streetmarket-demo-usdc-001`) then marked it **Settled / Fulfilled**, paid-out 805.
+- **Job 4 (NEAR):** 0.5 NEAR locked in escrow at posting; bids 0.49 → 0.48 → 0.47 → 0.465 → **0.455**; roaster-supply won. The main run stopped on a display-line error after the auction (the transcript keeps that failure line — the record is unedited), and `finish-job-b.js` completed the award and confirmation: the escrow released **exactly 0.455 NEAR** to the winner (its balance delta, to the yocto) and the job's escrow reads back **0**.
+
 ### 7. Verify the on-chain state yourself
 
 No trust in this README required. On [testnet.nearblocks.io](https://testnet.nearblocks.io), open each account from the table in "Deployed on NEAR testnet" — or call the contracts' view methods directly over JSON-RPC. One full example (answers `true`, returned as the byte array `[116, 114, 117, 101]`):
 
 ```
-curl -s https://rpc.testnet.near.org -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"verify","method":"query","params":{"request_type":"call_function","account_id":"board.ghosttech.testnet","method_name":"is_registered","args_base64":"eyJhY2NvdW50IjoiY2FmZTIuZ2hvc3R0ZWNoLnRlc3RuZXQifQ==","finality":"final"}}'
+curl -s https://rpc.testnet.fastnear.com -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"verify","method":"query","params":{"request_type":"call_function","account_id":"board.ghosttech.testnet","method_name":"is_registered","args_base64":"eyJhY2NvdW50IjoiY2FmZTIuZ2hvc3R0ZWNoLnRlc3RuZXQifQ==","finality":"final"}}'
 ```
 
 Same call, other `args_base64` values (the JSON is shown so you can re-encode it yourself):

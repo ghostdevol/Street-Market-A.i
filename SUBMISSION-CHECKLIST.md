@@ -17,13 +17,13 @@
 - [x] Three storefronts deployed and priced — `cafe2.ghosttech.testnet`, `roaster.ghosttech.testnet`, `owl.ghosttech.testnet`
 - [x] All three shops registered on the board — `is_registered` answers true for each
 - [x] Stated plainly in the README: the original `cafe.ghosttech.testnet` is deployed but **not** registered (its key was lost in the first deploy run); `cafe2` holds the registered corner-cafe seat
-- [ ] Keeper's first live run (optional hardening) — script written (`keeper/keeper.js`), not yet run; no live prices posted to the bulletin yet
+- [ ] Keeper's first live run (optional hardening) — script written (`keeper/keeper.js`), not yet run. Bulletin prices WERE posted during the Nov 8 demo (NEAR 3700000, USDC 1000000 micro-USD); with the 60-second freshness window they read stale between posts — that is the freshness rule working as designed
 
 ## Repo & docs
 
 - [x] Repository public on GitHub, with a LICENSE file (MIT)
 - [x] README carries the pitch, the deployed addresses, the honest settlement section, and judge steps (do X — see Y)
-- [x] Honest labels intact: the in-page bulletin is a labeled in-browser simulation; the keeper has not posted live prices; non-NEAR settlement is an obligation until fulfilled
+- [x] Honest labels intact: the page reads live chain state (bulletin/board/shops) and says so; the jobsheet sandbox is labeled as a sandbox; the keeper script has not yet run live; non-NEAR settlement is an obligation until fulfilled
 - [ ] This checklist's open items below all closed
 
 ## Demo & video
@@ -31,9 +31,9 @@
 - [x] Hosted demo live on GitHub Pages (this repo's `index.html`): storefronts, jobsheet board, price bulletin simulation, settlement flow
 - [x] Storyboard demo player fixed — Play advances a large stage frame by frame; tap-to-jump works
 - [x] Demo video v1 built (75 s, narrated, captions burned in) from the page's story
-- [ ] Real on-chain demo run: `node demo-run.js` — a USDC job bid down by the shops' own `quote_bid` calls through award → AwaitingSettlement → Fulfilled, and a NEAR job with real escrow locked and released on completion
-- [ ] Demo transcript saved (`demo-transcript.txt` from the run) and linked or committed for judges
-- [ ] Final demo video recorded from the **real on-chain run** (replaces or accompanies v1)
+- [x] Real on-chain demo run (Nov 8, 2026): Job A (id 3, USDC) — bid down by the shops' own `quote_bid` calls to 805, award → AwaitingSettlement (paid_out 0) → Fulfilled → Settled, `settlement_ref = streetmarket-demo-usdc-001`; Job B (id 4, NEAR) — 0.5 NEAR escrow locked at posting, bid war 0.49 → 0.455, award + confirm released exactly 0.455 NEAR to the winner (roaster), escrow read back 0. Job B's finish was completed by `finish-job-b.js` after the main run stopped on a display-line error (see the transcript, which keeps the failure line — the record is unedited)
+- [x] Demo transcript saved and committed: `demo-transcript.txt` (the real run plus the Job B completion pass, one continuous record)
+- [ ] Final demo video recorded from the **real on-chain run** (replaces or accompanies v1) — in production from the verified transcript
 
 ## X post (Daniel's own account, published by Daniel)
 
