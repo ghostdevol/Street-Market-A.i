@@ -17,7 +17,7 @@
 //   BOARD_ACCOUNT       e.g. board.streetmarket.testnet
 // Optional:
 //   KEEPER_INTERVAL_MS  default 30000
-//   NEAR_RPC_URL        default https://rpc.testnet.near.org
+//   NEAR_RPC_URL        default https://rpc.testnet.fastnear.com
 //   NETWORK_ID          default testnet
 
 const { connect, keyStores, KeyPair } = require("near-api-js");
@@ -88,7 +88,7 @@ async function main() {
   const near = await connect({
     networkId: process.env.NETWORK_ID || "testnet",
     keyStore,
-    nodeUrl: process.env.NEAR_RPC_URL || "https://rpc.testnet.near.org",
+    nodeUrl: process.env.NEAR_RPC_URL || "https://rpc.testnet.fastnear.com",
   });
   const keeper = await near.account(accountId);
 

@@ -123,7 +123,7 @@ async function main() {
   const near = await connect({
     networkId: NETWORK,
     keyStore,
-    nodeUrl: "https://rpc.testnet.near.org",
+    nodeUrl: "https://rpc.testnet.fastnear.com",
   });
   const master = await near.account(MASTER);
 
