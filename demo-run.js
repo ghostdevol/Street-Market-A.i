@@ -141,17 +141,32 @@ async function main() {
 
   async function printJob(jobId, label) {
     // get_job -> (status, currency, budget, best_bid, best_bidder, settlement)
-    const j = await master.viewFunction({
-      contractId: BOARD,
-      methodName: "get_job",
-      args: { job_id: jobId },
-    });
+    const j = await viewRetry(BOARD, "get_job", { job_id: jobId });
     log(
       `${label} job=${jobId} status=${j[0]} currency=${j[1]} budget=${j[2]} ` +
         `best_bid=${j[3] === null ? "none" : j[3]} best_bidder=${j[4] === null ? "none" : j[4]} settlement=${j[5]}`
     );
     return j;
   }
+  // View calls get retry armor: one flaky RPC view (a transient
+  // WasmTrap from a lagging public node killed the 2026-11-08 22:24
+  // run inside the auction loop, after Job A posted cleanly) must not
+  // kill the run. Six tries, three seconds apart; only a persistent
+  // failure aborts, through the same DEMO FAILED path.
+  async function viewRetry(contractId, methodName, args) {
+    let lastErr;
+    for (let i = 1; i <= 6; i++) {
+      try {
+        return await master.viewFunction({ contractId, methodName, args });
+      } catch (e) {
+        lastErr = e;
+        log(`VIEW RETRY ${i}/6 ${methodName} on ${contractId} - transient query failure, waiting 3s`);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    }
+    throw lastErr;
+  }
+
 
   // Price freshness on the board lasts 60 seconds. lastSync stamps the
   // last time each asset was posted to the bulletin AND synced to the
@@ -208,11 +223,7 @@ async function main() {
     let bidsThisRound = 0;
     for (const s of SHOPS) {
       const id = `${s.sub}.${MASTER}`;
-      const j = await master.viewFunction({
-        contractId: BOARD,
-        methodName: "get_job",
-        args: { job_id: jobA },
-      });
+      const j = await viewRetry(BOARD, "get_job", { job_id: jobA });
       const best = j[3] === null ? null : BigInt(j[3]);
       const bestBidder = j[4];
       if (bestBidder === id) {
@@ -223,11 +234,7 @@ async function main() {
       await syncPrice("USDC", PRICE_USDC, false);
       // The shop's OWN contract decides its quote. best_bid = 0 is the
       // contract's opening sentinel (no rival bid yet -> open at asking).
-      const q = await master.viewFunction({
-        contractId: id,
-        methodName: "quote_bid",
-        args: encodeArgs({ task: "coffee-run", currency: "USDC", item: "coffee", best_bid: best === null ? "0" : best.toString() }),
-      });
+      const q = await viewRetry(id, "quote_bid", encodeArgs({ task: "coffee-run", currency: "USDC", item: "coffee", best_bid: best === null ? "0" : best.toString() }));
       if (q === null) {
         log(`PASS ${s.name} (${id}) — no quote: the best bid is at or below its floor`);
         continue;
@@ -274,16 +281,8 @@ async function main() {
   await callChecked(master, BOARD, "confirm_completion", { job_id: jobA }, GAS_MASTER, "0");
   log(`CONFIRM A: poster confirmed completion (expected: status=AwaitingSettlement, settlement=Pending)`);
   const stateA = await printJob(jobA, "STATE");
-  const escrowA = await master.viewFunction({
-    contractId: BOARD,
-    methodName: "job_escrow",
-    args: { job_id: jobA },
-  });
-  const paidA = await master.viewFunction({
-    contractId: BOARD,
-    methodName: "paid_out_to",
-    args: { account: winnerA },
-  });
+  const escrowA = await viewRetry(BOARD, "job_escrow", { job_id: jobA });
+  const paidA = await viewRetry(BOARD, "paid_out_to", { account: winnerA });
   log(
     `OBLIGATION, NOT FUNDS: job ${jobA} records ${escrowA} USDC owed to ${winnerA} (settlement=${stateA[5]}), ` +
       `while paid_out_to(${winnerA}) = ${paidA} — nothing has actually been paid yet.`
@@ -299,16 +298,8 @@ async function main() {
   );
   log(`SETTLE A: report_settlement_fulfilled ref=streetmarket-demo-usdc-001 (expected: status=Settled, settlement=Fulfilled)`);
   await printJob(jobA, "STATE");
-  const paidA2 = await master.viewFunction({
-    contractId: BOARD,
-    methodName: "paid_out_to",
-    args: { account: winnerA },
-  });
-  const refA = await master.viewFunction({
-    contractId: BOARD,
-    methodName: "settlement_ref",
-    args: { job_id: jobA },
-  });
+  const paidA2 = await viewRetry(BOARD, "paid_out_to", { account: winnerA });
+  const refA = await viewRetry(BOARD, "settlement_ref", { job_id: jobA });
   log(`PROOF A: paid_out_to(${winnerA}) = ${paidA2} USDC, settlement_ref = ${refA}`);
 
   // -------------------------------------------------------------------
