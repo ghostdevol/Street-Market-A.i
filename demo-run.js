@@ -354,7 +354,12 @@ async function main() {
     log(`BID ${b.name} (${id}) ${b.amount} yocto (${fmt(b.amount)} NEAR) on job ${jobB}`);
   }
   const finalB = await printJob(jobB, "AUCTION FINAL");
-  log(`WINNER B: ${finalB[4]} at ${finalB[3]} yocto (${fmt(finalB[3])} NEAR)`);
+  // NOTE: finalB[3] is the view-returned best_bid — a LOSSY JS number
+  // past 2^53 (it prints as 4.55e+23). Never fmt() it: formatNearAmount
+  // throws "Invalid character" on the exponent form (that is what
+  // killed the 2026-11-08 22:44 run right here, before close_auction).
+  // The exact yocto amounts live in the board's BID logs above.
+  log(`WINNER B: ${finalB[4]} at ${finalB[3]} (exact yocto in the BID logs above)`);
 
   await syncPrice("NEAR", PRICE_NEAR, true); // freshness is re-checked at award
   await callChecked(master, BOARD, "close_auction", { job_id: jobB }, GAS_MASTER, "0");
