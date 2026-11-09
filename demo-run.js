@@ -234,7 +234,21 @@ async function main() {
       await syncPrice("USDC", PRICE_USDC, false);
       // The shop's OWN contract decides its quote. best_bid = 0 is the
       // contract's opening sentinel (no rival bid yet -> open at asking).
-      const q = await viewRetry(id, "quote_bid", encodeArgs({ task: "coffee-run", currency: "USDC", item: "coffee", best_bid: best === null ? "0" : best.toString() }));
+      const q = await viewRetry(id, "quote_bid", {
+        task: "coffee-run", currency: "USDC", item: "coffee",
+        // PLAIN OBJECT, bare NUMBER best_bid — two proven rules meet
+        // here: (1) the agent's raw-u128 deserializer wants a bare
+        // JSON number, and a JS number serializes bare; (2) the
+        // library's viewFunction runs JSON.stringify over its args,
+        // so a Buffer here would be mangled into
+        // {"type":"Buffer","data":[...]} and the call traps (proven
+        // from @near-js/accounts source, bytesJsonStringify). Change
+        // calls are the opposite: their stringifier passes Buffers
+        // through untouched, so encodeArgs stays correct there.
+        // Job A amounts are bounded by the 900 budget, so Number()
+        // is exact here.
+        best_bid: best === null ? 0 : Number(best),
+      });
       if (q === null) {
         log(`PASS ${s.name} (${id}) — no quote: the best bid is at or below its floor`);
         continue;
