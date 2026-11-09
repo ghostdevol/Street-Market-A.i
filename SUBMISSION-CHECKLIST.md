@@ -33,28 +33,28 @@
 - [x] Demo video v1 built (75 s, narrated, captions burned in) from the page's story
 - [x] Real on-chain demo run (Nov 8, 2026): Job A (id 3, USDC) — bid down by the shops' own `quote_bid` calls to 805, award → AwaitingSettlement (paid_out 0) → Fulfilled → Settled, `settlement_ref = streetmarket-demo-usdc-001`; Job B (id 4, NEAR) — 0.5 NEAR escrow locked at posting, bid war 0.49 → 0.455, award + confirm released exactly 0.455 NEAR to the winner (roaster), escrow read back 0. Job B's finish was completed by `finish-job-b.js` after the main run stopped on a display-line error (see the transcript, which keeps the failure line — the record is unedited)
 - [x] Demo transcript saved and committed: `demo-transcript.txt` (the real run plus the Job B completion pass, one continuous record)
-- [ ] Final demo video recorded from the **real on-chain run** (replaces or accompanies v1) — in production from the verified transcript
+- [x] Final demo video recorded from the **real on-chain run** — `streetmarket-demo-v2.mp4` (91 s, narrated, captions burned in; built from the verified transcript: Job 3 war to 805, obligation settlement, Job 4 escrow +0.455 exact), attached to the X post
 
 ## X post (Daniel's own account, published by Daniel)
 
-- [ ] Post published with the final demo video attached
-- [ ] Post states the project was built at NEAR HACKATHON
-- [ ] Post tags **@NEARProtocol** and **#NEARHackathon**
-- [ ] Post URL copied for the submission form's `demoUrl` field
+- [x] Post published with the final demo video attached (v2)
+- [x] Post states the project was built at NEAR HACKATHON (#NEARHackathon in the text; "Built at NEAR Hackathon 2026" in the attached video)
+- [x] Post tags **@NEARProtocol** and **#NEARHackathon** (verified by an outside read of the public post)
+- [x] Post URL copied for the submission form's `demoUrl` field — https://x.com/sielaff9219/status/2119801240028610875
 
 ## Submission form (one shot — check every field before sending)
 
-- [ ] `requestId` — a UUID, generated once and reused on any retry
-- [ ] `projectName` — StreetMarket AI by GhostTech
-- [ ] `leadName` — Daniel's name as team lead
-- [ ] `email` — Daniel's contact email
-- [ ] `size` — team size, exactly one of the form's listed values
-- [ ] `tracks` — `business`, `swarms`, `agents`, `realworld`
+- [x] `requestId` — a UUID, generated once and reused on any retry
+- [x] `projectName` — StreetMarket AI by GhostTech
+- [x] `leadName` — Daniel James Sielaff
+- [x] `email` — Daniel's contact email
+- [x] `size` — `1`
+- [x] `tracks` — `business`, `agents`, `swarms`, `realworld`
 - [ ] `nearAddress` — **`ghostech.near`** (mainnet payout account — spelled with ONE t; the testnet deploy account `ghosttech.testnet` is a different account and is NOT the payout address)
-- [ ] `projectUrl` — the public GitHub repo URL
-- [ ] `demoUrl` — the X post URL from the section above
-- [ ] `idea` — 20–2000 characters: the problem, the product, and how NEAR fits
-- [ ] `consent` — `true`, after agreeing to the contact notice
-- [ ] **`website` field left EMPTY** — it is a spam trap; any non-empty value rejects the submission
-- [ ] No extra fields added; payload reviewed in full by Daniel before sending
-- [ ] Submitted once, before Nov 14, 2026, 23:59 UTC
+- [x] `projectUrl` — the public GitHub repo URL
+- [x] `demoUrl` — the X post URL from the section above
+- [x] `idea` — 873 characters: the problem, the product, and how NEAR fits
+- [x] `consent` — `true`, after agreeing to the contact notice
+- [x] **`website` field left EMPTY** — it is a spam trap; any non-empty value rejects the submission (field omitted entirely)
+- [x] No extra fields added; payload reviewed in full by Daniel before sending (all 13 field validations passed)
+- [x] **SUBMITTED once — Nov 9, 2026, ~08:46 CST. The API answered 201 (saved).** Never submit again; corrections go through https://nearhackathon.com/request-changes only
