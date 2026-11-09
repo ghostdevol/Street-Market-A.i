@@ -42,6 +42,27 @@ const SHOPS = [
 // A u128 view result can come back as a JS number or a string depending
 // on magnitude; normalize before comparing. null stays null.
 const amountStr = (v) => (v === null || v === undefined ? null : String(v));
+// u128 arguments must reach the wire as BARE JSON NUMBER LITERALS.
+// These contracts take raw u128 parameters (not the U128 wrapper type):
+// their deserializer accepts a JSON number and traps on a JSON string
+// (sandbox-proven 2026-11-08: string form trapped 3/3 across two
+// contracts; bare literals succeeded, full precision past u64).
+// encodeArgs emits the u128 fields unquoted from their digit-string /
+// BigInt values, so even 24-digit yocto amounts keep every digit;
+// all other fields serialize normally.
+const U128_FIELDS = new Set(["price", "cost", "amount", "budget", "best_bid"]);
+function encodeArgs(obj) {
+  const parts = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (U128_FIELDS.has(k) && v !== null && v !== undefined) {
+      parts.push(`${JSON.stringify(k)}:${v.toString()}`);
+    } else {
+      parts.push(`${JSON.stringify(k)}:${JSON.stringify(v)}`);
+    }
+  }
+  return Buffer.from(`{${parts.join(",")}}`);
+}
+
 
 async function main() {
   const priv = process.env.MASTER_PRIVATE_KEY;
@@ -61,14 +82,13 @@ async function main() {
   });
   const master = await near.account(MASTER);
 
-  // Status-checked change call. Args go as a raw JSON buffer so u128
-  // string values reach the wire byte-exact. Throws with the on-chain
-  // failure detail if the outcome is not Success.
+  // Status-checked change call. Throws with the on-chain failure
+  // detail if the outcome is not Success.
   async function call(account, contractId, methodName, argsObj, gas) {
     const outcome = await account.functionCall({
       contractId,
       methodName,
-      args: Buffer.from(JSON.stringify(argsObj)),
+      args: encodeArgs(argsObj),
       gas,
       attachedDeposit: "0",
     });

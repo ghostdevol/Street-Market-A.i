@@ -60,19 +60,36 @@ function callReturn(outcome) {
   return JSON.parse(Buffer.from(sv, "base64").toString());
 }
 
-// Status-checked change call. Args go as a RAW JSON BUFFER so u128
-// string values reach the wire byte-exact — in the first run, a price
-// the script held as a string still arrived on-chain as a raw JSON
-// number through the object-args path, and the bulletin trapped on it.
-// The outcome's status is checked here: anything that is not Success
-// throws with the on-chain failure detail, so a trapped call aborts
-// the run through the DEMO FAILED path instead of passing silently
+// Status-checked change call: anything that is not Success throws
+// with the on-chain failure detail, so a trapped call aborts the run
+// through the DEMO FAILED path instead of passing silently
 // (the deploy.js failure mode).
+// u128 arguments must reach the wire as BARE JSON NUMBER LITERALS.
+// These contracts take raw u128 parameters (not the U128 wrapper type):
+// their deserializer accepts a JSON number and traps on a JSON string
+// (sandbox-proven 2026-11-08: string form trapped 3/3 across two
+// contracts; bare literals succeeded, full precision past u64).
+// encodeArgs emits the u128 fields unquoted from their digit-string /
+// BigInt values, so even 24-digit yocto amounts keep every digit;
+// all other fields serialize normally.
+const U128_FIELDS = new Set(["price", "cost", "amount", "budget", "best_bid"]);
+function encodeArgs(obj) {
+  const parts = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (U128_FIELDS.has(k) && v !== null && v !== undefined) {
+      parts.push(`${JSON.stringify(k)}:${v.toString()}`);
+    } else {
+      parts.push(`${JSON.stringify(k)}:${JSON.stringify(v)}`);
+    }
+  }
+  return Buffer.from(`{${parts.join(",")}}`);
+}
+
 async function callChecked(account, contractId, methodName, argsObj, gas, attachedDeposit) {
   const outcome = await account.functionCall({
     contractId,
     methodName,
-    args: Buffer.from(JSON.stringify(argsObj)),
+    args: encodeArgs(argsObj),
     gas,
     attachedDeposit,
   });
@@ -209,7 +226,7 @@ async function main() {
       const q = await master.viewFunction({
         contractId: id,
         methodName: "quote_bid",
-        args: { task: "coffee-run", currency: "USDC", item: "coffee", best_bid: best === null ? "0" : best.toString() },
+        args: encodeArgs({ task: "coffee-run", currency: "USDC", item: "coffee", best_bid: best === null ? "0" : best.toString() }),
       });
       if (q === null) {
         log(`PASS ${s.name} (${id}) — no quote: the best bid is at or below its floor`);

@@ -21,6 +21,25 @@
 //   NETWORK_ID          default testnet
 
 const { connect, keyStores, KeyPair } = require("near-api-js");
+// u128 arguments must reach the wire as BARE JSON NUMBER LITERALS.
+// These contracts take raw u128 parameters (not the U128 wrapper type):
+// their deserializer accepts a JSON number and traps on a JSON string
+// (sandbox-proven 2026-11-08). encodeArgs emits the u128 fields
+// unquoted from their digit-string values; all other fields serialize
+// normally.
+const U128_FIELDS = new Set(["price", "cost", "amount", "budget", "best_bid"]);
+function encodeArgs(obj) {
+  const parts = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (U128_FIELDS.has(k) && v !== null && v !== undefined) {
+      parts.push(`${JSON.stringify(k)}:${v.toString()}`);
+    } else {
+      parts.push(`${JSON.stringify(k)}:${JSON.stringify(v)}`);
+    }
+  }
+  return Buffer.from(`{${parts.join(",")}}`);
+}
+
 
 const ASSETS = [
   { symbol: "NEAR", gecko: "near" },
@@ -77,13 +96,13 @@ async function main() {
     await keeper.functionCall({
       contractId: bulletin,
       methodName: "post_price",
-      args: { asset, price: String(microUsd) },
+      args: encodeArgs({ asset, price: String(microUsd) }),
       gas: "30000000000000",
     });
     await keeper.functionCall({
       contractId: board,
       methodName: "sync_price",
-      args: { currency: asset, price: String(microUsd) },
+      args: encodeArgs({ currency: asset, price: String(microUsd) }),
       gas: "30000000000000",
     });
     console.log(`posted ${asset} = ${microUsd} micro-USD`);
